@@ -1,0 +1,64 @@
+######### consultas para el ejemplo
+- 
+SELECT
+a.SalesOrderID as ID,
+a.LineTotal,
+b.CurrencyRateID,
+c.AverageRate
+FROM Sales.SalesOrderDetail a
+join Sales.SalesOrderHeader b on a.SalesOrderID =b.SalesOrderID
+join Sales.CurrencyRate c on b.CurrencyRateID = c.CurrencyRateID
+-
+
+################ transformación
+##### anios de edad
+(Duration.Days(Duration.From(Date.From(DateTime.LocalNow())-[BirthDate]))/30)/12
+
+###### antieguedad
+= if [Activo] = "Si" then 
+(Duration.Days(Duration.From(Date.From(DateTime.LocalNow())- [fechaContrato]))/30)/12
+else 
+(Duration.Days(Duration.From([finContrato]- [fechaContrato]))/30)/12
+
+######agregar fecha actualización de report
+-transformar/nuevo origen/consulta:
+=datetime.localnow() 
+convertir a tabla, cambiar nombre de columna y tabla
+#######agregar calendario
+-transfromar/nuevo origen/ consulta(o query)/ editor avanzado(barra superior home)
+limpiar y agregar el sig código:
+let
+  //Get Max and Min date from oders table
+  //MaxDate=(Date.From(DateTime.LocalNow())),
+  //MaxDate=List.Max(Inventario_Power_BI[FechaEntrada]),
+  MaxDate=Date.FromText("2014/12/31"),
+  MinDate=List.Min(RH[fechaContrato]),
+  //MinDate=Date.FromText("2021/01/01"),
+  NoDays= Number.From(MaxDate-MinDate)+1,
+  Origen = List.Dates(MinDate, NoDays, #duration(1, 0, 0, 0)),
+  #"Convertida en tabla" = Table.FromList(Origen, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+  #"Columnas con nombre cambiado" = Table.RenameColumns(#"Convertida en tabla",{{"Column1", "Fecha"}}),
+  #"Tipo cambiado" = Table.TransformColumnTypes(#"Columnas con nombre cambiado",{{"Fecha", type date}}),
+  #"Columna duplicada" = Table.DuplicateColumn(#"Tipo cambiado", "Fecha", "Fecha - Copia"),
+  #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Columna duplicada",{{"Fecha - Copia", "Dia semana"}}),
+  #"Nombre del d’a extra’do" = Table.TransformColumns(#"Columnas con nombre cambiado1", {{"Dia semana", each Date.DayOfWeekName(_), type text}}),
+  #"D’a de la semana insertado" = Table.AddColumn(#"Nombre del d’a extra’do", "D’a de la semana", each Date.DayOfWeek([Fecha]), Int64.Type),
+  #"Nombre del mes insertado" = Table.AddColumn(#"D’a de la semana insertado", "Nombre del mes", each Date.MonthName([Fecha]), type text),
+  #"Anio insertado" = Table.AddColumn(#"Nombre del mes insertado", "Anio", each Date.Year([Fecha]), Int64.Type),
+  #"Columnas combinadas" = Table.CombineColumns(Table.TransformColumnTypes(#"Anio insertado", {{"Anio", type text}}, "es-419"),{"Nombre del mes", "Anio"},Combiner.CombineTextByDelimiter("", QuoteStyle.None),"AñoMes")
+in
+  #"Columnas combinadas" 
+
+#####################agregar columna dayfecha
+Seleccionas la fecha, agregar columna, fecha y dia de semana
+
+################################################# Consolidar modelo de datos
+Vincular las tablas con las fechas para automatizar procesos
+
+#################################################DAX
+-calculate(): hace un calculo con instrucciones internas, ejemplo: CALCULATE(Compras[Ordenes de compras],FILTER(Compras,Compras[Cumplimiento time entrega]="Si"))/Compras[Ordenes de compras]
+
+-Filter(): filtra los valores de la tabla y devuelve la cantidad
+
+-DISTINCTCOUNT(): como un filtro pero, filtra los valores únicos y devuelve la cantidad de cuantos calores únicos hay por ejemplo :DISTINCTCOUNT(Calendario[AnioMes]), devuelve el numero de meses del anio que tengamos registro
+
